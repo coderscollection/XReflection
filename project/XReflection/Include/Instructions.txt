@@ -1,0 +1,312 @@
+XReflect
+(c) John Nessworthy 2019.  Email ideaboxconsult@gmail.com
+C++ reflection and JSON serialization Library
+
+This software does not come with any warranty express or implied and is to be used at your own risk.
+The author does not accept any responsbility for an losses due to it's use, however they are incurred.
+You are free to compile and use this code in your own application but please give me credit and do
+not claim that the work is your own. 
+-----------------------------------------------------------
+Overview
+The reflection library is a header-only implementation. The files are included in the same directory as this readme file.
+
+
+It allows the c++ developer to:
+a) Define a class and very easily serialize to and from JSON.
+b) Access member variables dynamically using reflection.
+c) Define a base class with a number of derived classes, obtain a JSON message for a given derived class, and create an instance of that specific
+derived class via a base class pointer. 
+
+d) Classes can contain objects, native types, stl containers like vector and map, smart pointers, pointers to objects. 
+
+Supports
+--------
+* Real and abstract base classes.
+* Class hierarchies of any depth.
+* Member variables of any type, either native, object or pointer types.
+* STL containers, smart pointers, pointers to objects.
+* Serialization (and deserialization) of an unknown derived class via a base class pointer.
+* Can Deserialize JSON into a known object (using fromJSON) or contains a factory to create an object that inherits from a common base class (XReflection::create<base> )
+* Supports dynamic access of member variables using getFieldByName and setFieldByName
+* Supports insertion of JSON literals as a special type into classes. This means that we can obtain a JSON string from another source
+and include it literally in our JSON message as a continuation of the message. The JSON is NOT included as a 'string' wrapped in "" - it's included as a branch of the object tree
+  This type is called 'unquotedString' and is the subject of an example
+ *Supports out-of-order JSON messages. The fields do not have to be in the same order as the member variables. HOWEVER you will get best performance when the field order
+ exactly matches the member variable order - in other words - when the field order matches the JSON that is made by this framework for a given class.
+ This is allowed, so that you can use these classes to 'receive' JSON data from an external system more safely since the order might change in JSON from an external system.
+
+ *supports partial JSON messages. If you have an existing class with 10 members in it, populate the class, and then apply a JSON message to it
+ which only has 5 fields, then only the fields in the message will affect the relevant members in that class. The rest of the class members will not be touched.
+
+Limitations
+-----------
+1. Reference member variables are not currently supported - and due to limitations in the C++ language I don't think it's possible.
+
+2. Does not currently support multiple inheritance - but that might be added in a future release.
+
+3. Empty string fields are currently included in the JSON - not skipped.
+
+4. A null pointer member will be serialized as "Member" : 0 and not "Member" : null 
+
+6. The 'null' keyword is not yet supported in the JSON. This becomes an issue when dealing with strings
+for example we might treat a 'null' string the same as a  'missing' string in some JSON program implementations.
+Suppose for example we have a record for Rate and Date and an ID field. We decide that our JSON will contain the ID field
+and if the rate changes and the date is unchanged, we want our JSON to contain the rate, and no date field, or a date field of null
+to indicate 'no change'. 
+This framework is not a suitable candidate for such a scheme. Because the JSON that it expects will always be expected to contain all the member
+variables and because C++ compells us to initialize all our member variables and not all C++ types support the concept of 'null'. 
+
+
+
+Technical
+----------
+1. Routines throw std::runtime_error for issues. Make sure these are caught in your application.
+
+Pre-requisites.
+1. Has been compiled and tested using boost 1.69 Will also function with boost 1.59 with some code changes (boost::placeholders::_1 becomes _1 for boost 1_59 and earlier)
+2. You will need to point the include path at your local boost installation. Requires boost headers only. Does not require boost run-time libraries like system or thread. 
+3. Has been compiled and tested on RHEL gcc and also on windows Visual Studio 2015.
+
+Usage: 
+Your application will need:
+1. The include path to point to your local boost installation.
+2. The include path to point to Reflection/include to pick up the include files for this library.
+3. Each class header file will need to #include "XReflection.h"
+4. Each of your class headers that you wish to serialize to or deserialize from JSON will need to be changed thus:
+
+a. For normal base classes you wrap the members in the XREFLECT Macro and use SERIALIZE_JSON(base class name).  You will need REFLECTION_REGISTER(base class name) after the class definition end.
+b. For derived classes you wrap the members in the XREFLECT Macro and use SERIALIZE_JSON_DERIVED (derived class name, base class name).  You will need REFLECTION_REGISTER(base class name) after the class definition end.
+c. For abstract base classes you wrap the members in the XREFLECT Macro and use SERIALIZE_JSON_ABSTRACT (abstract base class name).  You do NOT need REFLECTION_REGISTER(base class name) in this instance. 
+
+Glossary of Macros
+--------------------------------
+XREFLECT
+( 
+   (type) membername,
+   (type) membername,
+   (type) membername
+)
+
+This prepares the member variables to be managed by the library.
+This macro will automatically include the member function fieldByName() that you can use to access member variables dynamically.
+
+SERIALIZE_JSON(classname)
+This must be included in base classes (but not abstract base classes) in a hierarchy that you intend to output to JSON.
+
+SERIALIZE_JSON_ABSTRACT(baseClassName)  
+This must be included in abstract base classes of a class hierarchy that you intend to output to JSON.
+
+SERIALIZE_JSON_DERIVED(className,ParentName)
+This must be included in derived classes that you intend to output. ClassName is the name of THIS class
+and ParentName is the name of the parent class, 1 above in the hierarchy. NOT the overriding base class.
+
+REFLECTION_REGISTER(classnam)
+This must be used on all classes EXCEPT abstract base classes.  This macro registers the class
+with the framework factory so that it is able to be dynamically created from the incoming JSON
+
+Glossary of Methods
+--------------------
+The following global methods are available
+
+XReflection::create<PointerType>(std::istream & input stream)
+This will create a pointer of type <PointerType> and an object that matches the incoming JSON.
+This will only work properly if the PointerType is a base class of the 'type' of the incoming JSON
+or if the PointerType is the same type as the message that will be created.
+
+XReflection::fromJSON(MainClass &objectReference, std::istream&input Stream)
+Pass in a reference to an object of a known type and the stream to contain JSON for the object.
+Identical in operation to calling fromJSON on the actual object.
+
+XReflection::toJSON(MainClass &objectReference, std::ostream&output Stream)
+Pass in a reference to an object and the output stream to create JSON for the object.
+Identical in operation to calling toJSON on the actual object.
+
+fieldType& XReflection::fieldByName<fieldType>(ObjectReference,const std::string &fieldName);
+Example:
+MyObject Foo;  //assume this object contains an 'int' member called IntegerField
+XReflection::fieldByName<int>(Foo,"IntegerField") = 10; 
+
+Class methods
+--------------
+
+A correctly constructed class usiong the correct Macros above will have certain methods and templates added to it automatically by the fmwk.
+These are: 
+
+void toJSON(std::ostream &os)
+Serialize this object and any superclasses to JSON and write to the output stream
+
+void fromJSON(std::istream &is)
+Populate this object and any superclasses from the JSON message in the input stream
+
+FieldType & fieldByName<FieldType>(const std::string &fieldName);
+Obtain a reference of type <FieldType> to a named member variable which can either be read, or assigned to.
+
+example:
+MyObject Foo;	//assume this object contains an std::string member called stringField
+std::string memberName="stringField";
+//assign to it
+Foo.fieldByName<std::string>(memberName) = std::string("Hello world");
+//or read it
+std::cout << Foo.fieldByName<std::string>(memberName);
+
+
+Interfacing with external systems and controlling message format
+-----------------------------------------------------------------
+Each member type in the class results in specific JSON.
+By choosing your members carefully you can write a class that will 'match' any incoming JSON message
+from some external system. Thus allowing your program to 'understand' a JSON message from someone else
+and automatically giving you a nice object with members and STL containers to process it in the code.
+
+The below examples give you the member variable declaration on the left and the JSON it produces on the right.
+Basic Types   -  Basic JSON fields
+
+std::string member  -   JSON string field 
+(std::string) Foo        "Foo" : "value of string member"
+(int)  Bar               "Bar" :  valueOfBar
+(float) Test			 "Test" :  valueOfTest
+
+Object Types - JSON sub objects
+(MyObject) Foo          "Foo" : {JSON for Object MyObject}
+
+Pointer Types (and smart pointer types) -   JSON sub objects 
+(MyObject*) Bar         "Bar" : {JSON for object MyObject}  (for valid pointers)
+						"Bar" : 0     {for null pointers}
+
+(boost::shared_ptr<MyObject>)  Extra              "Extra" : JSON for object MyObject}  (for valid pointers)
+												  "Extra" : 0      (for null pointers)
+
+Vectors		-		JSON arrays
+(std::vector<std::string>) Foo           Foo : ["one","two","three"]
+(std::vector<int>)  Bar                  Bar : [1,2,3]
+(std::vector<MyObject>)  Extra			 Extra : [{Object 1 JSON},{Object 2 JSON},{Object 3 JSON} ]
+
+Maps
+
+
+Sample use of code for JSON message generation
+-----------------------------------------------
+
+//The intention here then is that I will try and serialize the object 'Derived' to JSON
+//the rest of the definitions here are just to provide completeness.
+//I would serialize it using something like this
+Derived foo;
+foo.setup();	//setup the member which happens to be a base class pointer to a derived class object
+std::stringstream out;
+foo.toJSON(out);
+//we use streams so that you can serialize an object to/from a file easily as well as use the stream data in a message or whatever.
+std::string JSONstring = out.str();
+
+//--class definitions for the sample--
+class Base
+{
+public:
+	XREFLECT
+	(
+		(std::string) StringOne,
+		(int) NumberOne
+	)
+	SERIALIZE_JSON(Foo)
+};
+REFLECTION_REGISTER(Base)
+
+class Derived : public Base
+{
+public:
+	Derived() : someItem(NULL) {}  //you must provide a default constructor for these classes that does NOT instantiate someItem. The framework will expect someItem to be null when it attempts to serialize into it
+								   //and if this pointer is already popualted then framework will refuse to deserialize and will throw an error (because there would be a memory leak potential).
+	void setup()
+	{
+		someItem=new AnotherDerived();
+	}
+
+	~Derived()
+	{
+		delete someItem;
+	}
+	
+	XREFLECT
+	(
+		(std::string) DerivedString,
+		(MyObject) Object,
+		(MyAbstractBase*) someItem
+	)
+	SERIALIZE_JSON_DERIVED(Derived,Base)
+};
+REFLECTION_REGISTER(Derived)
+
+class MyObject
+{
+public:
+	XREFLECT
+	(
+		(std::string) MyObjectMember
+	)
+	SERIALIZE_JSON(MyObject)
+};
+REFLECTION_REGISTER(MyObject)
+
+//and here - lets define an abstract base class and a single derived class for it
+class MyAbstractBase
+{
+public:
+	virtual void SomeFunction(void) = 0;	//abstract base
+	XREFLECT
+	(
+		(std::string) ABCString,
+		(int) ABCNumber
+	)
+	SERIALIZE_JSON_ABSTRACT(MyAbstractBase)
+};
+
+class AnotherDerived : public MyAbstractBase
+{
+public:
+	virtual void SomeFunction(void) 
+	{
+	}
+
+	XREFLECT
+	(
+		(std::string) Foo
+	)
+	SERIALIZE_JSON_DERIVED(AnotherDerived,MyAbstractBase)
+};
+REFLECTION_REGISTER(AnotherDerived)
+
+
+
+Troubleshooting
+---------------
+
+Compilation errors:
+
+Compilation errors tend to be quite challenging to fix because the code is generated using metaprogramming, templated and hidden behind a macro. 
+I have included a few common ones here: 
+
+//----------------------
+warning C4003: not enough actual parameters for macro 'BOOST_PP_SEQ_SIZE_9'
+warning C4003: not enough actual parameters for macro 'BOOST_PP_SEQ_ELEM_0'
+warning C4003: not enough actual parameters for macro 'XREFL_INSRTMEMBR'
+warning C4003: not enough actual parameters for macro 'XREFL_RMBRACKET'
+error C4430: missing type specifier - int assumed. Note: C++ does not support default-int
+
+You probably accidentally put a comma or a semicolon at the end of the last member
+ensure the member list is in the format
+
+(type) membervariable,
+(type) membeveriable2,
+(type) membervariable3 
+
+//-------------------------
+
+error C2259: 'classname': cannot instantiate abstract class
+
+You probably tried to use REFLECTION_REGISTER or SERIALIZE_JSON on an abstract class.
+An abstract base class must use SERIALIZE_JSON_ABSTRACT 
+
+//------------------
+
+
+
+
+
