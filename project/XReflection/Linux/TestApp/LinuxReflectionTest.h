@@ -78,47 +78,6 @@ public:
 };
 REFLECTION_REGISTER(base)
 
-//here is a test class for the sky AS System Config File
-//currently in this format.
-/*
-{
-    "lowPowerTimerEnabled": true,
-    "useThunderForHdmiControl": false,
-    "cecWakeSupported": true,
-    "motionDetectionSupported": true,
-    "ffvWakeSupported": true,
-    "hdmiInputSupported": true
-}
-*/
-
-class SkyASSystemConfigFileTest
-{
-	public:
-	SkyASSystemConfigFileTest() : lowPowerTimerEnabled(false),useThunderForHdmiControl(false),cecWakeSupported(false),
-							  motionDetectionSupported(false),ffvWakeSupported(false),hdmiInputSupported(false)
-	{
-	}
-	
-	bool islowPowerTimerEnabled(void) const 
-	{
-		return lowPowerTimerEnabled;
-	}	//blah blah just for illustration
-
-
-
-	private:
-	XREFLECT
-	(
-		(bool) lowPowerTimerEnabled,
-    	(bool) useThunderForHdmiControl,
-    	(bool) cecWakeSupported,
-   		(bool) motionDetectionSupported,
-    	(bool) ffvWakeSupported,
-    	(bool) hdmiInputSupported
-	)
-	SERIALIZE_JSON(SkyASSystemConfigFileTest)
-};
-REFLECTION_REGISTER(SkyASSystemConfigFileTest)
 
 //so. Here we see that to make a class reflectable we must define our member
 //variables in a slightly different way to usual. 
@@ -262,7 +221,7 @@ private:
 
 	//this means that we define our members a bit differently using this syntax. 
 	//if we have a pre-generated class then we replace the semicolons with commas (apart from the last one)
-	//and wrap it in the GCSSREFLECT macro and wrap the types with ( ) as per the below
+	//and wrap it in the XREFLECT macro and wrap the types with ( ) as per the below
 	//when the class expands, it will have members just the same as usual with no difference.
 	//this is so that we can use the C++ preprocessor to generate our metadata for us about this class.
 
@@ -289,7 +248,7 @@ private:
 			(std::map<std::string, MyClass>) StringObjmap,
 			(std::vector<MyClass>) EmptyVector,
 			(std::map<std::string,MyClass>) EmptyMap
-		)//END GCSSREFLECT
+		)
 		SERIALIZE_JSON_DERIVED(TestClass,base)
 		
 /* Fix smart pointer support for std::shared_ptr instead
