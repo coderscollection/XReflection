@@ -1,6 +1,6 @@
 XReflection library and test.
 (c) John Nessworthy 2020. 
-No rights to copy, reproducem  alter or use this code in any form please.  For information only.
+No rights to copy alter or use this code in any form please.  For information only.
 ---------------
 
 
@@ -11,12 +11,12 @@ git clone this repo
 
 run ./start.sh to create the docker container and will drop into an interactive shell as the build user.
 
-cd ~
+cd ~  to go to the build user home directory.
 
 run ./build.sh to create the makefiles and build the binaries.
 (the binary and all other object files are present in the created 'build' folder)
 
-execute the binary 'ReflectionTest' in the build folder.
+execute the binary 'ReflectionTest' in the build folder. 
 
 
 More notes on the reflection code if you are interested
@@ -27,6 +27,8 @@ This can be found in the XReflection directory. The code for the framework is in
 
 I wanted to write a header-only library that would allow me to represent any c++ object as a JSON message, and automatically serialize a JSON stream to an appropriately structured object.  This is useful because it allows us to easily load and save a jSON configuration file, for example, or easily represent a set of incoming JSON messages as C++ objects.
 
+I wanted the framework to run on as many compilers and as many versions of C++ as possible, so I used as few 'new' features as possible. Sadly the need for variadic macros means the C11 preprocessor is required but if it wasn't for that we probably would be able to make it work in C++ 98. 
+
 The framework supports complex classes, single inheritance and containers. It also supports abstract base classes. 
 
 This is useful - because if have (say) 10 different sorts of JSON message that can arrive, if they all inherit from the same base class then the framework will interpret the message, create the correct object, and give the developer the object via a base class pointer. That means the code that uses the framework doesn't even need to know what messages are coming in. Just deal with objects.
@@ -35,4 +37,4 @@ There are a few limitations. It won't truly support multiple inheritance for exa
 
 The code uses boost MPL, templates and the preprocessor to automatically create fromJSON and toJSON methods for any c++ class. The only necessity, is that the member variables of the class (which can be any type - including container types) need to be defined using the correct syntax. 
 
-There are lengthy instructions in XReflection/instructions.txt.
+There are lengthy instructions in XReflection/instructions.txt.   There might be mistakes in the instructions, or the comments, or the code.  It's not finished and it needs tidying up.  There are a few issues with it. IT could really do with a rewrite to handle JSON, XML and Binary formats but I haven't gotten round to it. 
